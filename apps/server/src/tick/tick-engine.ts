@@ -1,8 +1,20 @@
 import Queue from 'bull';
 import { redis } from '../config/redis';
 import { prisma } from '../config/prisma';
+import { env } from '../config/env';
 import { TICK_INTERVALS, ENERGY_REGEN, MAX_ENERGY } from '@kilic-ve-kantar/shared';
 import type { Server } from 'socket.io';
+
+// Parse REDIS_URL into Bull-compatible ioredis options
+function bullRedisOpts(): { host: string; port: number; password?: string; enableReadyCheck: boolean } {
+  const u = new URL(env.REDIS_URL);
+  return {
+    host: u.hostname,
+    port: Number(u.port) || 6379,
+    ...(u.password ? { password: decodeURIComponent(u.password) } : {}),
+    enableReadyCheck: false,
+  };
+}
 
 let io: Server;
 export function setSocketIo(socketIo: Server) {
@@ -11,9 +23,9 @@ export function setSocketIo(socketIo: Server) {
 
 // ─── Queues ───────────────────────────────────────────────────────────────────
 
-export const microTickQueue = new Queue('micro-tick', { redis: { enableReadyCheck: false } });
-export const macroTickQueue = new Queue('macro-tick', { redis: { enableReadyCheck: false } });
-export const warTickQueue = new Queue('war-tick', { redis: { enableReadyCheck: false } });
+export const microTickQueue = new Queue('micro-tick', { redis: bullRedisOpts() });
+export const macroTickQueue = new Queue('macro-tick', { redis: bullRedisOpts() });
+export const warTickQueue = new Queue('war-tick', { redis: bullRedisOpts() });
 
 // ─── Scheduler ───────────────────────────────────────────────────────────────
 

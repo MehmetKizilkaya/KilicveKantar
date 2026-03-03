@@ -92,18 +92,19 @@ async function main() {
   const io = createSocketServer(httpServer);
   setSocketIo(io);
 
-  // ─── Tick Engine ─────────────────────────────────────────────────────────
-  try {
-    await startTickEngine();
-  } catch (err) {
-    console.warn('⚠️  Tick engine başlatılamadı (Redis gerekli):', (err as Error).message);
-  }
+  // ─── Start (before tick engine so healthcheck passes immediately) ─────────
+  await new Promise<void>((resolve) =>
+    httpServer.listen(env.PORT, '0.0.0.0', () => {
+      console.log(`\n⚔️  Kılıç ve Kantar sunucusu çalışıyor`);
+      console.log(`   http://0.0.0.0:${env.PORT}`);
+      console.log(`   Ortam: ${env.NODE_ENV}\n`);
+      resolve();
+    }),
+  );
 
-  // ─── Start ───────────────────────────────────────────────────────────────
-  httpServer.listen(env.PORT, () => {
-    console.log(`\n⚔️  Kılıç ve Kantar sunucusu çalışıyor`);
-    console.log(`   http://localhost:${env.PORT}`);
-    console.log(`   Ortam: ${env.NODE_ENV}\n`);
+  // ─── Tick Engine (non-blocking, started after server is up) ──────────────
+  startTickEngine().catch((err) => {
+    console.warn('⚠️  Tick engine başlatılamadı (Redis gerekli):', (err as Error).message);
   });
 
   // Graceful shutdown
