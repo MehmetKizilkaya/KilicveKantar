@@ -114,6 +114,12 @@
   color: #34d399;
 }
 
+/* Map tap ripple */
+@keyframes kvk-ripple {
+  0%   { transform: scale(0.5); opacity: 1; }
+  100% { transform: scale(2.5); opacity: 0; }
+}
+
 /* Animations */
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(4px); }
