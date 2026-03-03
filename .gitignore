@@ -15,3 +15,11 @@ npm-debug.log*
 .DS_Store
 Thumbs.db
 *.tsbuildinfo
+Add-Content .gitignore "`n.claude/settings.local.json`nGDD_v2.0_Placeholder.docx`n"
+.claude/settings.local.json
+GDD_v2.0_Placeholder.docx
+
+
+.claude/settings.local.json
+GDD_v2.0_Placeholder.docx
+
