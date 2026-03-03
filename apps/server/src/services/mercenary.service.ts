@@ -213,7 +213,7 @@ export const MercenaryService = {
         where: { mercenaryId: contract.mercenaryId, status: 'COMPLETED', mercenaryRating: { not: null } },
         select: { mercenaryRating: true },
       });
-      const avgRating = profiles.reduce((a, b) => a + (b.mercenaryRating ?? 0), 0) / profiles.length;
+      const avgRating = profiles.reduce((acc: number, row) => acc + (row.mercenaryRating ?? 0), 0) / profiles.length;
       await prisma.mercenaryProfile.update({
         where: { playerId: contract.mercenaryId },
         data: { reputationScore: Math.round(avgRating * 20) },

@@ -22,7 +22,7 @@ const auctionSchema = z.object({
   startingPrice: z.number().int().positive(),
   buyNowPrice: z.number().int().positive().nullable().optional(),
   currency: z.enum(['AKCE', 'ALTIN']).default('AKCE'),
-  durationHours: z.enum([4, 12, 24, 48]).default(24),
+  durationHours: z.union([z.literal(4), z.literal(12), z.literal(24), z.literal(48)]).default(24),
 });
 
 const bidSchema = z.object({

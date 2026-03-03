@@ -29,14 +29,14 @@ router.get('/feed', async (req, res) => {
   ]);
 
   // Merge and sort by date
-  const merged = [
-    ...articles.map((a) => ({ ...a, source: 'player' as const })),
-    ...autoEvents.map((e) => ({ ...e, source: 'auto' as const })),
-  ].sort((a, b) => {
-    const aDate = 'publishedAt' in a ? a.publishedAt : a.createdAt;
-    const bDate = 'publishedAt' in b ? b.publishedAt : b.createdAt;
-    return new Date(bDate).getTime() - new Date(aDate).getTime();
-  });
+  const playerItems = articles.map((a) => ({ ...a, source: 'player' as const }));
+  const autoItems = autoEvents.map((e) => ({ ...e, source: 'auto' as const }));
+  type MergedItem = typeof playerItems[number] | typeof autoItems[number];
+  const getItemDate = (item: MergedItem): Date =>
+    'publishedAt' in item ? item.publishedAt : item.createdAt;
+  const merged: MergedItem[] = ([...playerItems, ...autoItems] as MergedItem[]).sort(
+    (a, b) => getItemDate(b).getTime() - getItemDate(a).getTime(),
+  );
 
   res.json(merged.slice(0, pageSize));
 });
