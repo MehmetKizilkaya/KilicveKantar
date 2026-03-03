@@ -71,7 +71,7 @@ async function regenerateEnergy() {
 async function checkCompletedLaborCycles() {
   const completed = await prisma.laborCycle.findMany({
     where: { isActive: true, endsAt: { lte: new Date() }, collected: false },
-    include: { player: { select: { id: true, autoChainEnabled: false } } },
+    include: { player: { select: { id: true } } },
   });
 
   for (const cycle of completed) {

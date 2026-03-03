@@ -1,6 +1,6 @@
 import { prisma } from '../config/prisma';
 import { LABOR_DURATIONS, LABOR_REWARDS } from '@kilic-ve-kantar/shared';
-import type { VipPlan, LaborType } from '@kilic-ve-kantar/shared';
+import type { LaborType } from '@kilic-ve-kantar/shared';
 import { LABOR_EXTEND_COST_ALTIN, LABOR_RESTART_COST } from '@kilic-ve-kantar/shared';
 
 const PRISMA_TO_SHARED: Record<string, LaborType> = {
@@ -98,8 +98,8 @@ export const LaborService = {
 
     const sharedType = PRISMA_TO_SHARED[cycle.type];
     const durations = LABOR_DURATIONS[sharedType];
-    const isPremium = player.vipPlan !== 'FREE';
-    const baseDuration = isPremium ? durations.premium : durations.normal;
+    // vipPlan cannot be 'FREE' here — guard above already threw
+    const baseDuration = durations.premium;
     const extensionMinutes = Math.floor(baseDuration * 0.5);
 
     const newEndsAt = new Date(cycle.endsAt.getTime() + extensionMinutes * 60 * 1000);

@@ -1,6 +1,6 @@
 import { prisma } from '../config/prisma';
+import { Prisma } from '@prisma/client';
 import { BASE_PRICES, AUCTION_FEE_PERCENT, MAX_AUCTION_LISTINGS } from '@kilic-ve-kantar/shared';
-import type { Commodity } from '@kilic-ve-kantar/shared';
 
 export const MarketService = {
   async getRegionPrices(regionId: string): Promise<Record<string, number>> {
@@ -110,7 +110,7 @@ export const MarketService = {
       data: {
         sellerId: playerId,
         itemType,
-        itemData,
+        itemData: itemData as Prisma.InputJsonValue,
         startingPrice,
         buyNowPrice,
         currency,
