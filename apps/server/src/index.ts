@@ -22,6 +22,9 @@ import { regionRouter } from './routes/region.routes';
 import { mercenaryRouter } from './routes/mercenary.routes';
 import { newsRouter } from './routes/news.routes';
 import { marketRouter } from './routes/market.routes';
+import { travelRouter } from './routes/travel.routes';
+import { armyRouter } from './routes/army.routes';
+import { npcRouter } from './routes/npc.routes';
 
 async function main() {
   // Redis — warn but don't crash if unavailable during development
@@ -66,6 +69,9 @@ async function main() {
   app.use('/api/mercenaries', mercenaryRouter);
   app.use('/api/news', newsRouter);
   app.use('/api/market', marketRouter);
+  app.use('/api/travel', travelRouter);
+  app.use('/api/army', armyRouter);
+  app.use('/api/npc', npcRouter);
 
   app.get('/api/health', (_req, res) => {
     res.json({ status: 'ok', time: new Date().toISOString() });

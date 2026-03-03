@@ -4,6 +4,9 @@ import { prisma } from '../config/prisma';
 import { env } from '../config/env';
 import { TICK_INTERVALS, ENERGY_REGEN, MAX_ENERGY } from '@kilic-ve-kantar/shared';
 import type { Server } from 'socket.io';
+import { TravelService } from '../services/travel.service';
+import { ArmyService } from '../services/army.service';
+import { NpcService } from '../services/npc.service';
 
 // Parse REDIS_URL into Bull-compatible ioredis options
 function bullRedisOpts(): { host: string; port: number; password?: string; enableReadyCheck: boolean } {
@@ -55,6 +58,10 @@ async function processMicroTick() {
     regenerateEnergy(),
     checkCompletedLaborCycles(),
     checkExpiredAuctions(),
+    TravelService.resolveArrivals(),
+    ArmyService.resolveTraining(),
+    ArmyService.resolveArmyMovements(),
+    NpcService.refreshStocks(),
   ]);
 
   io?.emit('tick:micro', now);
@@ -224,6 +231,9 @@ async function updateFactionWeeklyPoints() {
 
 async function processWarTick() {
   console.log('[WarTick]', new Date().toISOString());
+
+  // Resolve active sieges
+  await ArmyService.resolveSieges(io);
 
   const activeWars = await prisma.war.findMany({
     where: { status: 'ACTIVE' },

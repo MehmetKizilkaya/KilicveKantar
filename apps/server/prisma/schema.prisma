@@ -30,8 +30,16 @@ model Player {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  homeRegionId   String?
-  homeRegion     Region?  @relation("HomeRegion", fields: [homeRegionId], references: [id])
+  homeRegionId        String?
+  homeRegion          Region?   @relation("HomeRegion", fields: [homeRegionId], references: [id])
+
+  // Current location & travel
+  currentRegionId     String?
+  currentRegion       Region?   @relation("CurrentRegion", fields: [currentRegionId], references: [id])
+  destinationRegionId String?
+  destinationRegion   Region?   @relation("DestinationRegion", fields: [destinationRegionId], references: [id])
+  travelStartsAt      DateTime?
+  travelEndsAt        DateTime?
 
   factionId      String?
   faction        Faction? @relation(fields: [factionId], references: [id])
@@ -55,9 +63,12 @@ model Player {
   badges               PlayerBadge[]
   refreshTokens        RefreshToken[]
   marketAlerts         MarketAlert[]
+  armyUnits            ArmyUnit[]
+  siegesAsAttacker     Siege[]          @relation("SiegeAttacker")
 
   @@index([factionId])
   @@index([homeRegionId])
+  @@index([currentRegionId])
 }
 
 model RefreshToken {
@@ -147,15 +158,21 @@ model Region {
   factionId     String?
   faction       Faction?   @relation(fields: [factionId], references: [id])
 
-  homePlayers   Player[]   @relation("HomeRegion")
-  stats         RegionStats?
-  caravansFrom  Caravan[]  @relation("CaravanOrigin")
-  caravansTo    Caravan[]  @relation("CaravanDest")
-  warsAsTarget  War[]
-  raids         Raid[]
-  coups         CoupAttempt[]
-  marketOrders  MarketOrder[]
-  articles      NewsArticle[]
+  homePlayers        Player[]   @relation("HomeRegion")
+  currentPlayers     Player[]   @relation("CurrentRegion")
+  destinedPlayers    Player[]   @relation("DestinationRegion")
+  stats              RegionStats?
+  caravansFrom       Caravan[]  @relation("CaravanOrigin")
+  caravansTo         Caravan[]  @relation("CaravanDest")
+  warsAsTarget       War[]
+  raids              Raid[]
+  coups              CoupAttempt[]
+  marketOrders       MarketOrder[]
+  articles           NewsArticle[]
+  npcOrders          NpcOrder[]
+  siegesAsTarget     Siege[]    @relation("SiegeTarget")
+  garrisonedUnits    ArmyUnit[] @relation("Garrison")
+  transitUnits       ArmyUnit[] @relation("Transit")
 
   @@index([factionId])
 }
@@ -585,4 +602,83 @@ model PlayerBadge {
   earnedAt   DateTime @default(now())
 
   @@unique([playerId, badgeId])
+}
+
+// ─── ARMY ─────────────────────────────────────────────────────────────────────
+
+model ArmyUnit {
+  id                  String      @id @default(cuid())
+  playerId            String
+  player              Player      @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  unitType            UnitKind
+  count               Int         @default(0)
+
+  // Training
+  isTraining          Boolean     @default(false)
+  trainingEndsAt      DateTime?
+
+  // Location / transit
+  garrisonRegionId    String?
+  garrisonRegion      Region?     @relation("Garrison", fields: [garrisonRegionId], references: [id])
+  isInTransit         Boolean     @default(false)
+  destinationRegionId String?
+  destinationRegion   Region?     @relation("Transit", fields: [destinationRegionId], references: [id])
+  travelEndsAt        DateTime?
+
+  createdAt           DateTime    @default(now())
+
+  @@index([playerId])
+  @@index([garrisonRegionId])
+}
+
+enum UnitKind {
+  INFANTRY
+  CAVALRY
+  ARTILLERY
+}
+
+// ─── NPC ORDERS ───────────────────────────────────────────────────────────────
+
+model NpcOrder {
+  id             String   @id @default(cuid())
+  regionId       String
+  region         Region   @relation(fields: [regionId], references: [id], onDelete: Cascade)
+  commodity      String
+  stock          Int      @default(0)
+  maxStock       Int      @default(100)
+  buyPrice       Int      // NPC this price'a satar (oyuncu bu fiyata alır)
+  sellPrice      Int      // NPC bu fiyata satın alır (oyuncu satarken bu fiyatı alır)
+  refreshAmount  Int      @default(10) // Micro tick'te yenilenen miktar
+
+  @@unique([regionId, commodity])
+  @@index([regionId])
+}
+
+// ─── SIEGE ────────────────────────────────────────────────────────────────────
+
+model Siege {
+  id               String      @id @default(cuid())
+  attackerPlayerId String
+  attacker         Player      @relation("SiegeAttacker", fields: [attackerPlayerId], references: [id])
+  targetRegionId   String
+  targetRegion     Region      @relation("SiegeTarget", fields: [targetRegionId], references: [id])
+  attackerPower    Int         @default(0)
+  defenderPower    Int         @default(0)
+  status           SiegeStatus @default(ACTIVE)
+  startedAt        DateTime    @default(now())
+  endsAt           DateTime
+  result           SiegeResult?
+
+  @@index([targetRegionId, status])
+  @@index([attackerPlayerId])
+}
+
+enum SiegeStatus {
+  ACTIVE
+  RESOLVED
+}
+
+enum SiegeResult {
+  ATTACKER_WINS
+  DEFENDER_WINS
 }

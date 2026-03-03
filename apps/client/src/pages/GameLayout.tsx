@@ -1,23 +1,20 @@
 import { Routes, Route } from 'react-router-dom';
 import { Link, useLocation } from 'react-router-dom';
 import clsx from 'clsx';
-import TurkeyMap from '../components/map/TurkeyMap';
-import ChatPanel from '../components/chat/ChatPanel';
-import PlayerHUD from '../components/hud/PlayerHUD';
-import LaborPanel from '../components/labor/LaborPanel';
-import NewsFeed from '../components/news/NewsFeed';
-import RegionPanel from '../components/region/RegionPanel';
 import NotificationToast from '../components/notifications/NotificationToast';
 import MarketPage from './MarketPage';
 import MercenaryPage from './MercenaryPage';
 import NewsPage from './NewsPage';
+import MapPage from './MapPage';
+import ArmyPage from './ArmyPage';
 import { useAuthStore } from '../store/auth.store';
 import { api } from '../lib/api';
 
 const NAV = [
   { to: '/game', label: '🗺️ Harita', exact: true },
+  { to: '/game/army', label: '⚔️ Ordu' },
   { to: '/game/market', label: '📦 Pazar' },
-  { to: '/game/mercenaries', label: '⚔️ Lonca' },
+  { to: '/game/mercenaries', label: '🗡️ Lonca' },
   { to: '/game/news', label: '📰 Gazete' },
   { to: '/game/profile', label: '👤 Profil' },
 ];
@@ -89,28 +86,11 @@ function TopBar() {
 }
 
 function MapView() {
-  return (
-    <div className="flex-1 grid grid-cols-[1fr_300px] gap-3 min-h-0">
-      {/* Main map */}
-      <div className="flex flex-col gap-3 min-h-0">
-        <div className="panel flex-1 overflow-hidden min-h-0">
-          <TurkeyMap />
-        </div>
-        {/* News feed below map */}
-        <div className="panel h-52 overflow-hidden">
-          <NewsFeed />
-        </div>
-      </div>
+  return <MapPage />;
+}
 
-      {/* Right sidebar */}
-      <div className="flex flex-col gap-3 min-h-0 overflow-y-auto">
-        <PlayerHUD />
-        <LaborPanel />
-        <RegionPanel />
-        <ChatPanel />
-      </div>
-    </div>
-  );
+function ArmyView() {
+  return <ArmyPage />;
 }
 
 function MarketView() {
@@ -168,6 +148,7 @@ export default function GameLayout() {
       <main className="flex-1 p-3 min-h-0 overflow-hidden">
         <Routes>
           <Route path="/" element={<MapView />} />
+          <Route path="/army" element={<ArmyView />} />
           <Route path="/market" element={<MarketView />} />
           <Route path="/mercenaries" element={<MercenaryView />} />
           <Route path="/news" element={<NewsView />} />

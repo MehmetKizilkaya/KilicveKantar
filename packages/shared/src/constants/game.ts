@@ -1,10 +1,37 @@
 // Tick durations in milliseconds
 export const TICK_INTERVALS = {
-  MICRO: 15 * 60 * 1000,     // 15 minutes
+  MICRO: 2 * 60 * 1000,      // 2 minutes (labor/travel checks)
   MACRO: 6 * 60 * 60 * 1000, // 6 hours
-  WAR: 30 * 60 * 1000,       // 30 minutes
+  WAR: 5 * 60 * 1000,        // 5 minutes (siege resolution)
   WEEKLY: 7 * 24 * 60 * 60 * 1000, // 1 week
 } as const;
+
+// Travel times in milliseconds
+export const TRAVEL_TIMES = {
+  NEIGHBOR: 5 * 60 * 1000,   // 5 minutes for adjacent provinces
+  DISTANT:  20 * 60 * 1000,  // 20 minutes for non-adjacent provinces
+} as const;
+export const TRAVEL_ENERGY_COST = 5;
+
+// Army unit training
+export const UNIT_TRAINING = {
+  INFANTRY:  { costAkce: 300,  trainMinutes: 10 },
+  CAVALRY:   { costAkce: 800,  trainMinutes: 15 },
+  ARTILLERY: { costAkce: 2000, trainMinutes: 25 },
+} as const;
+
+// Army unit combat power per unit
+export const UNIT_POWER = {
+  INFANTRY:  8,
+  CAVALRY:   20,
+  ARTILLERY: 45,
+} as const;
+
+// Army movement time (same as travel)
+export const ARMY_MOVE_MINUTES = 20;
+
+// NPC trader margin (buy/sell spread)
+export const NPC_MARGIN = 0.15; // 15% above/below base price
 
 // Energy costs per action
 export const ENERGY_COSTS = {
