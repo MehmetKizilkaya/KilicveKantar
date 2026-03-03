@@ -1,0 +1,588 @@
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x", "debian-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── PLAYERS ─────────────────────────────────────────────────────────────────
+
+model Player {
+  id             String   @id @default(cuid())
+  username       String   @unique
+  email          String   @unique
+  passwordHash   String
+  akceBalance    Int      @default(1000)
+  altinBalance   Int      @default(10)
+  energy         Int      @default(100)
+  tradeXp        Int      @default(0)
+  militaryXp     Int      @default(0)
+  tradeLevel     Int      @default(1)
+  militaryLevel  Int      @default(1)
+  vipPlan        VipPlan  @default(FREE)
+  vipExpiresAt   DateTime?
+  reputationScore Int     @default(0)
+  role           PlayerRole @default(PLAYER)
+  lastLoginAt    DateTime?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  homeRegionId   String?
+  homeRegion     Region?  @relation("HomeRegion", fields: [homeRegionId], references: [id])
+
+  factionId      String?
+  faction        Faction? @relation(fields: [factionId], references: [id])
+
+  laborCycles          LaborCycle[]
+  governedRegions      Region[]         @relation("Governor")
+  mercenaryProfile     MercenaryProfile?
+  contractsAsEmployer  MercenaryContract[] @relation("Employer")
+  contractsAsMercenary MercenaryContract[] @relation("Mercenary")
+  articles             NewsArticle[]
+  chatMessages         ChatMessage[]
+  auctionListings      AuctionListing[]
+  marketOrders         MarketOrder[]
+  notifications        Notification[]
+  caravans             Caravan[]
+  tradeOffersFrom      TradeOffer[]     @relation("TradeFrom")
+  tradeOffersTo        TradeOffer[]     @relation("TradeTo")
+  shareHoldings        ShareHolding[]
+  warsAsAttacker       War[]            @relation("Attacker")
+  inventoryItems       InventoryItem[]
+  badges               PlayerBadge[]
+  refreshTokens        RefreshToken[]
+  marketAlerts         MarketAlert[]
+
+  @@index([factionId])
+  @@index([homeRegionId])
+}
+
+model RefreshToken {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  playerId  String
+  player    Player   @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([playerId])
+}
+
+enum VipPlan {
+  FREE
+  TRADER
+  COMMANDER
+  SULTAN
+}
+
+enum PlayerRole {
+  PLAYER
+  MODERATOR
+  ADMIN
+}
+
+// ─── LABOR ───────────────────────────────────────────────────────────────────
+
+model LaborCycle {
+  id               String    @id @default(cuid())
+  playerId         String
+  player           Player    @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  type             LaborType
+  startedAt        DateTime  @default(now())
+  endsAt           DateTime
+  isActive         Boolean   @default(true)
+  autoChainEnabled Boolean   @default(false)
+  extendedCount    Int       @default(0)
+  akceReward       Int
+  collected        Boolean   @default(false)
+  collectedAt      DateTime?
+
+  @@index([playerId, isActive])
+}
+
+enum LaborType {
+  BASIC_WORKER
+  CRAFTSMAN
+  TRADER_LABOR
+  SOLDIER
+}
+
+// ─── INVENTORY ────────────────────────────────────────────────────────────────
+
+model InventoryItem {
+  id         String    @id @default(cuid())
+  playerId   String
+  player     Player    @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  commodity  String
+  quantity   Int       @default(0)
+  regionId   String?   // stored in which city's warehouse
+
+  @@unique([playerId, commodity, regionId])
+  @@index([playerId])
+}
+
+// ─── REGIONS ─────────────────────────────────────────────────────────────────
+
+model Region {
+  id              String      @id @default(cuid())
+  name            String      @unique
+  code            String      @unique // TR-34
+  type            RegionType
+  morale          Int         @default(70)
+  population      Int         @default(100000)
+  economicValue   Int         @default(100)
+  militaryValue   Int         @default(100)
+  isUnderSiege    Boolean     @default(false)
+  specialResource String?
+  svgPathId       String      @unique
+  neighborIds     String[]    @default([])
+  createdAt       DateTime    @default(now())
+
+  governorId    String?
+  governor      Player?    @relation("Governor", fields: [governorId], references: [id])
+
+  factionId     String?
+  faction       Faction?   @relation(fields: [factionId], references: [id])
+
+  homePlayers   Player[]   @relation("HomeRegion")
+  stats         RegionStats?
+  caravansFrom  Caravan[]  @relation("CaravanOrigin")
+  caravansTo    Caravan[]  @relation("CaravanDest")
+  warsAsTarget  War[]
+  raids         Raid[]
+  coups         CoupAttempt[]
+  marketOrders  MarketOrder[]
+  articles      NewsArticle[]
+
+  @@index([factionId])
+}
+
+model RegionStats {
+  id           String   @id @default(cuid())
+  regionId     String   @unique
+  region       Region   @relation(fields: [regionId], references: [id], onDelete: Cascade)
+  ironStock    Int      @default(0)
+  woodStock    Int      @default(0)
+  wheatStock   Int      @default(0)
+  cottonStock  Int      @default(0)
+  saltStock    Int      @default(0)
+  copperStock  Int      @default(0)
+  taxRate      Int      @default(10)
+  defenseLevel Int      @default(1)
+  garrisonSize Int      @default(0)
+  lastUpdated  DateTime @default(now())
+}
+
+enum RegionType {
+  AGRICULTURE
+  INDUSTRIAL
+  TRADE
+  MILITARY
+  COASTAL
+}
+
+// ─── MILITARY ────────────────────────────────────────────────────────────────
+
+model War {
+  id                String    @id @default(cuid())
+  attackerPlayerId  String
+  attacker          Player    @relation("Attacker", fields: [attackerPlayerId], references: [id])
+  attackerFactionId String?
+  defenderPlayerId  String?
+  defenderFactionId String?
+  targetRegionId    String
+  targetRegion      Region    @relation(fields: [targetRegionId], references: [id])
+  status            WarStatus @default(DECLARED)
+  declaredAt        DateTime  @default(now())
+  startsAt          DateTime
+  endsAt            DateTime?
+  attackerPower     Int       @default(0)
+  defenderPower     Int       @default(0)
+  result            WarResult?
+  loot              Int       @default(0)
+
+  @@index([targetRegionId])
+  @@index([status])
+}
+
+enum WarStatus {
+  DECLARED
+  ACTIVE
+  FINISHED
+}
+
+enum WarResult {
+  ATTACKER_WINS
+  DEFENDER_WINS
+  DRAW
+}
+
+model Raid {
+  id             String     @id @default(cuid())
+  attackerId     String
+  targetRegionId String
+  targetRegion   Region     @relation(fields: [targetRegionId], references: [id])
+  unitCount      Int
+  unitType       String
+  status         RaidStatus @default(ACTIVE)
+  startedAt      DateTime   @default(now())
+  endsAt         DateTime
+  loot           Int?
+
+  @@index([attackerId])
+}
+
+enum RaidStatus {
+  ACTIVE
+  SUCCESS
+  FAILED
+}
+
+model CoupAttempt {
+  id             String     @id @default(cuid())
+  organizerId    String
+  targetRegionId String
+  targetRegion   Region     @relation(fields: [targetRegionId], references: [id])
+  status         CoupStatus @default(PREPARING)
+  resourceSpent  Int
+  startedAt      DateTime   @default(now())
+  launchesAt     DateTime
+
+  @@index([organizerId])
+}
+
+enum CoupStatus {
+  PREPARING
+  LAUNCHED
+  SUCCESS
+  FAILED
+}
+
+// ─── ECONOMY ─────────────────────────────────────────────────────────────────
+
+model MarketOrder {
+  id             String      @id @default(cuid())
+  playerId       String
+  player         Player      @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  regionId       String
+  region         Region      @relation(fields: [regionId], references: [id])
+  commodity      String
+  orderType      OrderType
+  quantity       Int
+  pricePerUnit   Int
+  currency       Currency    @default(AKCE)
+  filledQuantity Int         @default(0)
+  status         OrderStatus @default(OPEN)
+  createdAt      DateTime    @default(now())
+
+  @@index([regionId, commodity, status])
+  @@index([playerId])
+}
+
+model MarketAlert {
+  id        String   @id @default(cuid())
+  playerId  String
+  player    Player   @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  commodity String
+  regionId  String?
+  condition String   // "above" | "below"
+  price     Int
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+}
+
+enum OrderType {
+  BUY
+  SELL
+}
+
+enum OrderStatus {
+  OPEN
+  FILLED
+  CANCELLED
+}
+
+enum Currency {
+  AKCE
+  ALTIN
+}
+
+model AuctionListing {
+  id            String         @id @default(cuid())
+  sellerId      String
+  seller        Player         @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+  itemType      String
+  itemData      Json
+  startingPrice Int
+  buyNowPrice   Int?
+  currency      Currency       @default(AKCE)
+  currentBid    Int            @default(0)
+  currentBidder String?
+  endsAt        DateTime
+  status        AuctionStatus  @default(ACTIVE)
+  createdAt     DateTime       @default(now())
+
+  @@index([status, endsAt])
+}
+
+enum AuctionStatus {
+  ACTIVE
+  SOLD
+  EXPIRED
+  CANCELLED
+}
+
+model Caravan {
+  id                  String        @id @default(cuid())
+  ownerId             String
+  owner               Player        @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  originRegionId      String
+  originRegion        Region        @relation("CaravanOrigin", fields: [originRegionId], references: [id])
+  destinationRegionId String
+  destinationRegion   Region        @relation("CaravanDest", fields: [destinationRegionId], references: [id])
+  cargo               Json
+  guardCount          Int           @default(0)
+  status              CaravanStatus @default(PREPARING)
+  departureAt         DateTime
+  arrivalAt           DateTime
+  isInsured           Boolean       @default(false)
+  insuranceCoverage   Int           @default(0)
+  estimatedValue      Int           @default(0)
+
+  @@index([ownerId])
+  @@index([status])
+}
+
+enum CaravanStatus {
+  PREPARING
+  TRAVELING
+  ARRIVED
+  ROBBED
+}
+
+model TradeOffer {
+  id             String           @id @default(cuid())
+  fromPlayerId   String
+  fromPlayer     Player           @relation("TradeFrom", fields: [fromPlayerId], references: [id], onDelete: Cascade)
+  toPlayerId     String
+  toPlayer       Player           @relation("TradeTo", fields: [toPlayerId], references: [id], onDelete: Cascade)
+  offeredItems   Json
+  requestedItems Json
+  status         TradeOfferStatus @default(PENDING)
+  expiresAt      DateTime
+  createdAt      DateTime         @default(now())
+
+  @@index([toPlayerId, status])
+}
+
+enum TradeOfferStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  COUNTERED
+  EXPIRED
+}
+
+// ─── FACTIONS ────────────────────────────────────────────────────────────────
+
+model Faction {
+  id              String   @id @default(cuid())
+  name            String   @unique
+  tag             String   @unique
+  leaderId        String
+  description     String   @default("")
+  akceBalance     Int      @default(0)
+  weeklyPoints    Int      @default(0)
+  totalPoints     Int      @default(0)
+  shareCount      Int      @default(0)
+  availableShares Int      @default(0)
+  sharePriceAkce  Int      @default(100)
+  createdAt       DateTime @default(now())
+
+  members         Player[]
+  regions         Region[]
+  shares          FactionShare[]
+  shareHoldings   ShareHolding[]
+  diplomaticFrom  DiplomaticRelation[] @relation("Faction1")
+  diplomaticTo    DiplomaticRelation[] @relation("Faction2")
+}
+
+model FactionShare {
+  id              String   @id @default(cuid())
+  factionId       String
+  faction         Faction  @relation(fields: [factionId], references: [id], onDelete: Cascade)
+  totalShares     Int
+  availableShares Int
+  currentPriceAkce Int     @default(100)
+  issuedAt        DateTime @default(now())
+}
+
+model ShareHolding {
+  id           String  @id @default(cuid())
+  playerId     String
+  player       Player  @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  factionId    String
+  faction      Faction @relation(fields: [factionId], references: [id], onDelete: Cascade)
+  shareCount   Int
+  avgBuyPrice  Int
+
+  @@unique([playerId, factionId])
+}
+
+model DiplomaticRelation {
+  id        String             @id @default(cuid())
+  faction1Id String
+  faction1  Faction            @relation("Faction1", fields: [faction1Id], references: [id], onDelete: Cascade)
+  faction2Id String
+  faction2  Faction            @relation("Faction2", fields: [faction2Id], references: [id], onDelete: Cascade)
+  type      DiplomacyType
+  terms     Json               @default("{}")
+  startedAt DateTime           @default(now())
+  expiresAt DateTime?
+  status    DiplomacyStatus    @default(ACTIVE)
+}
+
+enum DiplomacyType {
+  CEASEFIRE
+  FREE_TRADE
+  MILITARY_ALLIANCE
+  COMMODITY_DEAL
+  CARAVAN_RIGHTS
+  NEUTRALITY_PACT
+}
+
+enum DiplomacyStatus {
+  ACTIVE
+  EXPIRED
+  BROKEN
+}
+
+// ─── SOCIAL ──────────────────────────────────────────────────────────────────
+
+model ChatMessage {
+  id         String   @id @default(cuid())
+  playerId   String
+  player     Player   @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  channel    String
+  content    String
+  createdAt  DateTime @default(now())
+
+  @@index([channel, createdAt(sort: Desc)])
+}
+
+model NewsArticle {
+  id                 String      @id @default(cuid())
+  authorId           String
+  author             Player      @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  title              String
+  content            String
+  type               ArticleType
+  targetRegionId     String?
+  targetRegion       Region?     @relation(fields: [targetRegionId], references: [id])
+  readCount          Int         @default(0)
+  likeCount          Int         @default(0)
+  propagandaStrength Int         @default(0)
+  publishedAt        DateTime    @default(now())
+  isApproved         Boolean     @default(false)
+
+  @@index([isApproved, publishedAt(sort: Desc)])
+}
+
+enum ArticleType {
+  NEWS
+  COLUMN
+  PROPAGANDA
+  ADVERTISEMENT
+  INTERVIEW
+}
+
+model AutoNewsEvent {
+  id                String   @id @default(cuid())
+  type              String
+  title             String
+  body              String
+  involvedPlayerIds String[] @default([])
+  involvedRegionIds String[] @default([])
+  createdAt         DateTime @default(now())
+
+  @@index([createdAt(sort: Desc)])
+}
+
+model MercenaryProfile {
+  id               String   @id @default(cuid())
+  playerId         String   @unique
+  player           Player   @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  specialization   String[] @default([])
+  dailyRateAkce    Int      @default(1000)
+  dailyRateAltin   Int      @default(1)
+  isAvailable      Boolean  @default(true)
+  reputationScore  Int      @default(0)
+  totalContracts   Int      @default(0)
+  wins             Int      @default(0)
+  description      String   @default("")
+  updatedAt        DateTime @updatedAt
+}
+
+model MercenaryContract {
+  id               String         @id @default(cuid())
+  employerId       String
+  employer         Player         @relation("Employer", fields: [employerId], references: [id], onDelete: Cascade)
+  mercenaryId      String
+  mercenary        Player         @relation("Mercenary", fields: [mercenaryId], references: [id], onDelete: Cascade)
+  type             ContractType
+  durationDays     Int
+  totalAkce        Int
+  totalAltin       Int            @default(0)
+  status           ContractStatus @default(PENDING)
+  startedAt        DateTime?
+  endedAt          DateTime?
+  employerRating   Int?
+  mercenaryRating  Int?
+  createdAt        DateTime       @default(now())
+
+  @@index([mercenaryId, status])
+  @@index([employerId, status])
+}
+
+enum ContractType {
+  DAILY_RAID
+  DEFENSE_PACT
+  RECONNAISSANCE
+  FACTION_ALLIANCE
+  SPECIAL_MISSION
+}
+
+enum ContractStatus {
+  PENDING
+  ACTIVE
+  COMPLETED
+  CANCELLED
+  BREACHED
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  playerId  String
+  player    Player   @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  type      String
+  title     String
+  body      String
+  isRead    Boolean  @default(false)
+  data      Json     @default("{}")
+  createdAt DateTime @default(now())
+
+  @@index([playerId, isRead])
+}
+
+model PlayerBadge {
+  id         String   @id @default(cuid())
+  playerId   String
+  player     Player   @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  badgeId    String
+  earnedAt   DateTime @default(now())
+
+  @@unique([playerId, badgeId])
+}

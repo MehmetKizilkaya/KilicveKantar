@@ -1,0 +1,18 @@
+# Railway / Nixpacks build configuration for Kılıç ve Kantar monorepo
+
+[phases.setup]
+nixPkgs = ["nodejs_20", "openssl"]
+
+[phases.install]
+cmds = ["npm ci"]
+
+[phases.build]
+cmds = [
+  "npm run build --workspace=packages/shared",
+  "npm run build --workspace=apps/client",
+  "npx prisma generate --schema=apps/server/prisma/schema.prisma",
+  "npm run build --workspace=apps/server"
+]
+
+[start]
+cmd = "node apps/server/dist/index.js"
